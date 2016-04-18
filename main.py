@@ -60,7 +60,7 @@ def guess(matrix):
             if row[row_index] != 0:
                 matrix[row_index] = line_elimination(matrix[index], matrix[row_index], lead_element_index)
 
-        return matrix
+    return matrix
 
 if __name__ == '__main__':
     # 초반 행렬 선언

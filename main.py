@@ -124,5 +124,5 @@ if __name__ == '__main__':
 
     matrix = guess_jordan(matrix)
 
-    print("After Guess_Jordan: ")
+    print("\nAfter Guess_Jordan: ")
     pprint(matrix)

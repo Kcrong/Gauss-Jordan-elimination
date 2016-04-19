@@ -1,5 +1,5 @@
+import re
 from fractions import Fraction
-from pprint import pprint
 
 
 # 선도 원소의 index 를 찾아줌
@@ -111,6 +111,148 @@ def guess_jordan(matrix):
     return matrix
 
 
+def remove_condition(split_equation_list):
+    for i in range(len(split_equation_list)):
+        for condition in {'+', '/', '*', '='}:
+            while True:
+                try:
+                    split_equation_list[i].remove(condition)
+                except ValueError:
+                    break
+
+    return split_equation_list
+
+
+def get_variable_dict(split_equation_list):
+    all_variable = list()
+
+    for equation in split_equation_list:
+        var_num_dict = dict()
+        for piece in equation[:len(equation) - 1]:
+            # if piece.isnumeric() is False:  # 문자가 섞여있으면
+            try:
+                int_piece = int(piece)
+            except ValueError:
+                # 변수 (x,y,z..) 의 인덱스 값
+                var_index = piece.find(re.sub("([0-9])", "", piece))
+
+                # 각 조각에서 계수와 미지수를 가져온다.
+                num_data = piece[:var_index]  # 계수 데이터
+
+                if num_data == '':  # 계수가 1이라 생략된 경우에
+                    num = 1
+                else:  # 아닐 경우, int 형으로 저장
+                    num = int(num_data)
+
+                var = piece[var_index:]  # 미지수
+
+                var_num_dict[var] = num
+
+            else:
+                equation[-1] = int(equation[-1]) - int_piece
+
+        # 방정식 결과 값을 '$result' 라는 이름으로 dict 에 저장한다
+        var_num_dict['$result'] = equation[-1]
+
+        all_variable.append(var_num_dict)
+
+    return all_variable
+
+
+def get_all_var_name(all_variable):
+    # 총 미지수 목록
+    var_list = list()
+
+    for variable in all_variable:
+        var_list += list(variable.keys())
+    var_list = set(var_list)  # 중복 제거
+    var_list.remove('$result')
+
+    return var_list
+
+
+def equation2matrix(equation_list):
+    # 연산자 단위로 식을 나눔.
+    # 그 후 연산자를 모두 제거
+    split_equation_list = remove_condition(
+        [re.split("([+/*=])", equation.replace(" ", "")) for equation in equation_list])
+
+    all_variable = get_variable_dict(split_equation_list)
+
+    # 행렬 생성 부분
+    matrix = list()
+
+    all_var_name = get_all_var_name(all_variable)
+
+    for i in range(len(equation_list)):
+        line = list()
+        for var_name in all_var_name:
+            try:
+                line.append(all_variable[i][var_name])
+            except KeyError:  # 해당 미지수가 없는 식일 경우
+                line.append(0)
+        line.append(int(all_variable[i]['$result']))
+        matrix.append(line)  # 행렬에 행 추가
+
+    return all_var_name, matrix
+
+
+def check_equation(equation):
+    # 등호가 들어있고 길이가 1 보다 큰 지 확인
+    return '=' in equation and len(equation) > 1
+
+
+def pprint(data):
+    for i in data:
+        print(i)
+
+
+def get_user_equation():
+    equation_list = list()
+    print("입력 종료는 'done' 입력")
+    while True:
+        equation = input("연립방정식 입력: ")
+
+        if equation == 'done':
+            break
+        elif check_equation(equation) is False:
+            print("잘못된 식입니다!")
+        else:
+            equation_list.append(equation)
+
+    return equation_list
+
+
+def find_var_result(var_names, matrix):
+    result_dict = dict()
+
+    # 행렬의 모든 값을 정수형으로 변환
+    for i in range(len(matrix)):
+        for j in range(len(matrix[0])):
+            matrix[i][j] = int(matrix[i][j])
+
+    for line in matrix:
+        for line_index in range(len(line)-1):
+            if line[line_index] != 0:
+                zero_count = line[:len(line)-1].count(0)
+                if (len(line)-1) - zero_count == 1:
+                    result_dict[var_names[line_index]] = str(line[-1])
+                    continue
+
+                for i in range(line_index+1, len(line)-1):
+                    if line[i] == 0 or line[i] == '0':
+                        continue
+                    else:
+                        if line[-1] == 0:
+                            line[-1] = ''
+                        tmp_result = (str(line[-1]) + str(line[i]*-1) + var_names[i]).replace('1', '')
+                        result_dict[var_names[line_index]] = tmp_result
+                        line[-1] = tmp_result
+
+                break
+
+    return result_dict
+
 if __name__ == '__main__':
     # 초반 행렬 선언
     matrix = [
@@ -126,3 +268,25 @@ if __name__ == '__main__':
 
     print("\nAfter Guess_Jordan: ")
     pprint(matrix)
+
+    print('\n\n\n')
+
+    equation_list = get_user_equation()
+
+    all_var_name, matrix = equation2matrix(equation_list)
+
+    print("방정식 행렬화 결과")
+
+    pprint(matrix)
+
+    print("\n가우스 조던 소거 결과")
+
+    result_matrix = guess_jordan(matrix)
+    pprint(result_matrix)
+
+    print("\n방정식 해 출력")
+
+    result_dict = find_var_result(list(all_var_name), result_matrix)
+
+    for key in result_dict.keys():
+        print("%s = %s" % (key, result_dict[key]))
